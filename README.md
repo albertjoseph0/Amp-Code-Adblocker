@@ -18,11 +18,11 @@ A native, stealth-mode macOS utility designed to reclaim your terminal space whi
 
 You can run the app directly from your terminal without compiling.
 
-1. Save the code as `AmpBlockerPro.swift`.
+1. Save the code as `AdBlocker.swift`.
 2. Run it:
 
 ```bash
-swift AmpBlockerPro.swift
+swift AdBlocker.swift
 ```
 
 
@@ -33,7 +33,7 @@ For better performance (<20MB RAM) and background usage:
 1. **Compile the binary:**
 
 ```bash
-swiftc AmpBlockerPro.swift -o AmpBlocker
+swiftc AdBlocker.swift -o AmpBlocker
 ```
 
 2. **Move to Applications (Optional):**
@@ -76,7 +76,7 @@ The app automatically works with the following terminal emulators:
 * Ghostty
 
 **Using a different terminal?**
-Open `AmpBlockerPro.swift` and add your terminal's Bundle ID to the `terminalBundleIDs` list:
+Open `AdBlocker.swift` and add your terminal's Bundle ID to the `terminalBundleIDs` list:
 
 ```swift
 let terminalBundleIDs = [
