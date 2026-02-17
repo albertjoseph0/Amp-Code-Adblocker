@@ -54,6 +54,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var trackedTerminalPID: pid_t = 0
     var axObserver: AXObserver?
     var trackedWindowRef: AXUIElement?
+    var trackedAppRef: AXUIElement?
+    
+    // Tab-awareness state
+    var ampProcessPattern = "— amp "  // Pattern that identifies an Amp session in terminal titles
+    var titlePollTimer: Timer?
+    var isOnTargetTab = true
     
     // List of Terminal App Bundle IDs
     let terminalBundleIDs = [
@@ -73,7 +79,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let savedOffset = defaults.object(forKey: "bottomOffset") as? CGFloat {
             bottomOffset = savedOffset
         }
-        
         window = NSWindow(
             contentRect: initialFrame,
             styleMask: [.titled, .resizable, .fullSizeContentView],
@@ -124,33 +129,57 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     // MARK: - AXObserver for Terminal Window Tracking
     
+    func getFocusedWindow(for pid: pid_t) -> AXUIElement? {
+        let appRef = AXUIElementCreateApplication(pid)
+        var focusedValue: CFTypeRef?
+        // Try focused window first (the one with keyboard focus)
+        if AXUIElementCopyAttributeValue(appRef, kAXFocusedWindowAttribute as CFString, &focusedValue) == .success {
+            return (focusedValue as! AXUIElement)
+        }
+        // Fallback to first window
+        var windowListValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(appRef, kAXWindowsAttribute as CFString, &windowListValue) == .success,
+           let windowList = windowListValue as? [AXUIElement], let first = windowList.first {
+            return first
+        }
+        return nil
+    }
+    
     func startTrackingTerminalWindow(pid: pid_t) {
-        // Don't re-track the same PID
-        if pid == trackedTerminalPID && axObserver != nil { return }
-        
-        // Clean up previous observer
-        stopTrackingTerminalWindow()
+        // Clean up previous observer if tracking a different PID
+        if pid != trackedTerminalPID || axObserver == nil {
+            stopTrackingTerminalWindow()
+        }
         
         guard AXIsProcessTrusted() else { return }
         
-        let appRef = AXUIElementCreateApplication(pid)
+        guard let focusedWindow = getFocusedWindow(for: pid) else { return }
         
-        // Get the windows array
-        var windowListValue: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(appRef, kAXWindowsAttribute as CFString, &windowListValue)
-        guard result == .success, let windowList = windowListValue as? [AXUIElement], let firstWindow = windowList.first else {
+        // If already tracking this PID, just update the tracked window ref
+        if pid == trackedTerminalPID && axObserver != nil {
+            trackedWindowRef = focusedWindow
+            handleTitleChanged()
             return
         }
         
         trackedTerminalPID = pid
-        trackedWindowRef = firstWindow
+        trackedWindowRef = focusedWindow
+        let appRef = AXUIElementCreateApplication(pid)
+        trackedAppRef = appRef
         
         // Create AXObserver
         var observer: AXObserver?
         let callbackPtr: AXObserverCallback = { (observer, element, notification, refcon) in
             guard let refcon = refcon else { return }
             let appDelegate = Unmanaged<AppDelegate>.fromOpaque(refcon).takeUnretainedValue()
-            appDelegate.repositionBlocker()
+            let notifName = notification as String
+            if notifName == kAXFocusedWindowChangedNotification {
+                appDelegate.handleFocusedWindowChanged()
+            } else if notifName == kAXTitleChangedNotification {
+                appDelegate.handleTitleChanged()
+            } else {
+                appDelegate.repositionBlocker()
+            }
         }
         
         guard AXObserverCreate(pid, callbackPtr, &observer) == .success, let obs = observer else {
@@ -160,24 +189,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         axObserver = obs
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         
-        AXObserverAddNotification(obs, firstWindow, kAXMovedNotification as CFString, refcon)
-        AXObserverAddNotification(obs, firstWindow, kAXResizedNotification as CFString, refcon)
+        // Window-level notifications (move/resize/title on current focused window)
+        AXObserverAddNotification(obs, focusedWindow, kAXMovedNotification as CFString, refcon)
+        AXObserverAddNotification(obs, focusedWindow, kAXResizedNotification as CFString, refcon)
+        AXObserverAddNotification(obs, focusedWindow, kAXTitleChangedNotification as CFString, refcon)
+        
+        // App-level notification (detect switching between windows)
+        AXObserverAddNotification(obs, appRef, kAXFocusedWindowChangedNotification as CFString, refcon)
         
         CFRunLoopAddSource(CFRunLoopGetCurrent(), AXObserverGetRunLoopSource(obs), .defaultMode)
         
-        // Do an initial positioning
-        repositionBlocker()
+        // Start fallback title poll timer
+        startTitlePollTimer()
+        
+        // Do an initial positioning and tab check
+        handleTitleChanged()
     }
     
     func stopTrackingTerminalWindow() {
-        if let obs = axObserver, let winRef = trackedWindowRef {
-            AXObserverRemoveNotification(obs, winRef, kAXMovedNotification as CFString)
-            AXObserverRemoveNotification(obs, winRef, kAXResizedNotification as CFString)
+        if let obs = axObserver {
+            if let winRef = trackedWindowRef {
+                AXObserverRemoveNotification(obs, winRef, kAXMovedNotification as CFString)
+                AXObserverRemoveNotification(obs, winRef, kAXResizedNotification as CFString)
+                AXObserverRemoveNotification(obs, winRef, kAXTitleChangedNotification as CFString)
+            }
+            if let appRef = trackedAppRef {
+                AXObserverRemoveNotification(obs, appRef, kAXFocusedWindowChangedNotification as CFString)
+            }
             CFRunLoopRemoveSource(CFRunLoopGetCurrent(), AXObserverGetRunLoopSource(obs), .defaultMode)
         }
+        stopTitlePollTimer()
         axObserver = nil
         trackedWindowRef = nil
+        trackedAppRef = nil
         trackedTerminalPID = 0
+        isOnTargetTab = true
     }
     
     // MARK: - Auto-Positioning Logic
@@ -215,6 +261,71 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         saveState()
     }
     
+    // MARK: - Tab-Awareness
+    
+    func handleFocusedWindowChanged() {
+        guard autoPositionEnabled, trackedTerminalPID != 0 else { return }
+        // Update tracked window ref to the newly focused window
+        if let newWindow = getFocusedWindow(for: trackedTerminalPID) {
+            trackedWindowRef = newWindow
+        }
+        handleTitleChanged()
+    }
+    
+    func readWindowTitle() -> String? {
+        guard let winRef = trackedWindowRef else { return nil }
+        var titleValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(winRef, kAXTitleAttribute as CFString, &titleValue) == .success,
+              let title = titleValue as? String else {
+            return nil
+        }
+        return title
+    }
+    
+    func isAmpWindow() -> Bool {
+        guard let title = readWindowTitle() else { return false }
+        return title.contains(ampProcessPattern)
+    }
+    
+    func handleTitleChanged() {
+        guard autoPositionEnabled else {
+            repositionBlocker()
+            return
+        }
+        
+        let matches = isAmpWindow()
+        
+        if matches {
+            if !isOnTargetTab || !window.isVisible {
+                // Switched back to target tab or window needs to be shown
+                isOnTargetTab = true
+                window.orderFront(nil)
+            }
+            repositionBlocker()
+        } else if isOnTargetTab {
+            // Switched away from the target tab
+            isOnTargetTab = false
+            window.orderOut(nil)
+        }
+    }
+    
+    func startTitlePollTimer() {
+        stopTitlePollTimer()
+        titlePollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self, self.trackedTerminalPID != 0 else { return }
+            // Refresh the focused window ref in case it changed without notification
+            if let newWindow = self.getFocusedWindow(for: self.trackedTerminalPID) {
+                self.trackedWindowRef = newWindow
+            }
+            self.handleTitleChanged()
+        }
+    }
+    
+    func stopTitlePollTimer() {
+        titlePollTimer?.invalidate()
+        titlePollTimer = nil
+    }
+    
     // MARK: - State
     
     @objc func saveState() {
@@ -229,9 +340,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let frontApp = NSWorkspace.shared.frontmostApplication,
            let bundleID = frontApp.bundleIdentifier {
             if terminalBundleIDs.contains(bundleID) {
-                window.orderFront(nil)
                 if autoPositionEnabled {
                     startTrackingTerminalWindow(pid: frontApp.processIdentifier)
+                    // handleTitleChanged will show/hide based on tab match
+                } else {
+                    window.orderFront(nil)
                 }
             } else {
                 window.orderOut(nil)

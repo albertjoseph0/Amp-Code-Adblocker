@@ -7,13 +7,14 @@ A native, stealth-mode macOS utility designed to reclaim your terminal space whi
 * **🎯 Auto-Position Mode:**
     * Uses the macOS **Accessibility API** to read your terminal window's frame and automatically snap the blocker over the ad strip.
     * The blocker **follows your terminal** — it repositions itself whenever the terminal window is moved or resized.
+    * **Multi-window support** — works across all open terminal windows. The blocker automatically appears on whichever window is running Amp and hides on non-Amp windows.
     * Fine-tune the vertical offset with **Nudge Up / Nudge Down** controls (`⌘+` / `⌘-`).
     * Auto-locks the blocker in place once positioned.
 * **👻 Ghost Mode (Hover Reveal):**
     * **Locked:** The bar is 100% opaque and ignores all mouse clicks. You can type and click "through" it as if it isn't there.
     * **Unlocked:** The bar becomes interactive. Hovering over it turns it semi-transparent (10% opacity), allowing you to peek at the content behind it for precision alignment.
 * **🔒 Persistence:** Automatically remembers its position, size, offset, and auto-position preference between sessions.
-* **🧠 Smart Visibility:** Automatically detects your active application. The blocker **only** appears when you are using a supported terminal (Terminal, iTerm2, VS Code, etc.) and hides itself when you switch to other apps.
+* **🧠 Smart Visibility:** Automatically detects your active application and whether Amp is running. The blocker **only** appears on terminal windows with an active Amp session and hides when you switch to other apps or non-Amp terminal windows.
 * **🎨 Native Aesthetics:** Uses `NSVisualEffectView` with a "HUD" material (frosted dark glass) to blend seamlessly with modern terminal themes.
 
 
