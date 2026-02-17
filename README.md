@@ -2,6 +2,8 @@
 
 A native, stealth-mode macOS utility designed to reclaim your terminal space while using the [Amp](https://ampcode.com) AI coding agent. It creates a floating, click-through "ghost" window that obscures the ad space above the input box without blocking your workflow.
 
+![Ad Blocked](pics/ad-blocked.png)
+
 ## ✨ Features
 
 * **🎯 Auto-Position Mode:**
