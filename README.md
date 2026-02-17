@@ -4,10 +4,15 @@ A native, stealth-mode macOS utility designed to reclaim your terminal space whi
 
 ## ✨ Features
 
+* **🎯 Auto-Position Mode:**
+    * Uses the macOS **Accessibility API** to read your terminal window's frame and automatically snap the blocker over the ad strip.
+    * The blocker **follows your terminal** — it repositions itself whenever the terminal window is moved or resized.
+    * Fine-tune the vertical offset with **Nudge Up / Nudge Down** controls (`⌘+` / `⌘-`).
+    * Auto-locks the blocker in place once positioned.
 * **👻 Ghost Mode (Hover Reveal):**
     * **Locked:** The bar is 100% opaque and ignores all mouse clicks. You can type and click "through" it as if it isn't there.
     * **Unlocked:** The bar becomes interactive. Hovering over it turns it semi-transparent (10% opacity), allowing you to peek at the content behind it for precision alignment.
-* **🔒 Persistence:** Automatically remembers its exact position and size between sessions.
+* **🔒 Persistence:** Automatically remembers its position, size, offset, and auto-position preference between sessions.
 * **🧠 Smart Visibility:** Automatically detects your active application. The blocker **only** appears when you are using a supported terminal (Terminal, iTerm2, VS Code, etc.) and hides itself when you switch to other apps.
 * **🎨 Native Aesthetics:** Uses `NSVisualEffectView` with a "HUD" material (frosted dark glass) to blend seamlessly with modern terminal themes.
 
@@ -51,13 +56,27 @@ nohup /Applications/AmpBlocker >/dev/null 2>&1 &
 
 ## 📖 Usage Guide
 
+### Auto-Position Mode (Recommended)
+
+1. **Launch**: Start the app. A dark, frosted bar will appear.
+2. **Grant Accessibility Permission**: On first launch, you'll be prompted to grant Accessibility access in **System Settings > Privacy & Security > Accessibility**. This is required for auto-positioning.
+3. **Enable Auto-Position**:
+    * Click the **Eye Slash** icon in the macOS Menu Bar (top-right).
+    * Select **Auto-Position** (`⌘A`).
+    * The blocker will automatically snap to the ad area of your active terminal window and lock in place.
+4. **Fine-Tune**: If the blocker is slightly off for your font size or terminal config:
+    * Use **Nudge Up** (`⌘+`) or **Nudge Down** (`⌘-`) to adjust by 5px increments.
+    * Your offset is saved automatically.
+
+### Manual Mode (Fallback)
+
 1. **Launch**: Start the app. A dark, frosted bar will appear.
 2. **Position**:
     * Drag the bar to cover the ad strip at the bottom of your terminal.
     * *Pro Tip:* Hover over the bar to make it transparent so you can align it perfectly with the text lines.
 3. **Lock**:
     * Click the **Eye Slash** icon in the macOS Menu Bar (top-right).
-    * Select **Lock Position**.
+    * Select **Lock Position** (`⌘L`).
     * The bar will turn solid and non-interactive. You can now work freely.
 4. **Unlock**: To move or resize the bar later, use the Menu Bar icon to "Unlock."
 
@@ -88,7 +107,18 @@ let terminalBundleIDs = [
 
 *(Find a Bundle ID by running `osascript -e 'id of app "AppName"'` in your terminal)*.
 
+### Menu Bar Controls
+
+| Control | Shortcut | Description |
+|---------|----------|-------------|
+| Auto-Position | `⌘A` | Toggle automatic positioning based on terminal window frame |
+| Nudge Up | `⌘+` | Move blocker up by 5px |
+| Nudge Down | `⌘-` | Move blocker down by 5px |
+| Lock / Unlock | `⌘L` | Toggle manual lock (click-through mode) |
+| Quit | `⌘Q` | Exit the app |
+
 ## 🛠 System Requirements
 
 * macOS 10.13 (High Sierra) or later.
 * Swift 5.0+ (Pre-installed on macOS).
+* **Accessibility permission** required for Auto-Position mode.
