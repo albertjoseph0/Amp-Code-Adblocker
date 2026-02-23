@@ -2,7 +2,7 @@ import Cocoa
 import ApplicationServices
 
 // 1. Custom View to Handle Hovering
-class HoverView: NSVisualEffectView {
+class HoverView: NSView {
     private var trackingArea: NSTrackingArea?
     
     override func updateTrackingAreas() {
@@ -88,15 +88,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // 2. SETUP VISUALS (Blur + Hover)
         hoverView = HoverView()
-        hoverView.material = .hudWindow // Dark frosted glass
-        hoverView.state = .active
-        hoverView.blendingMode = .behindWindow
+        hoverView.wantsLayer = true
+        hoverView.layer?.backgroundColor = NSColor.black.cgColor
         window.contentView = hoverView
         
         // Window Settings
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.backgroundColor = .clear
+        window.backgroundColor = .black
+        window.isOpaque = true
         window.level = .floating
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         window.isMovableByWindowBackground = true
