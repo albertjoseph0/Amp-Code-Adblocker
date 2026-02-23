@@ -17,7 +17,7 @@ A native, stealth-mode macOS utility designed to reclaim your terminal space whi
     * **Unlocked:** The bar becomes interactive. Hovering over it turns it semi-transparent (10% opacity), allowing you to peek at the content behind it for precision alignment.
 * **🔒 Persistence:** Automatically remembers its position, size, offset, and auto-position preference between sessions.
 * **🧠 Smart Visibility:** Automatically detects your active application and whether Amp is running. The blocker **only** appears on terminal windows with an active Amp session and hides when you switch to other apps or non-Amp terminal windows.
-* **🎨 Native Aesthetics:** Uses `NSVisualEffectView` with a "HUD" material (frosted dark glass) to blend seamlessly with modern terminal themes.
+* **🎨 Native Aesthetics:** Uses a solid dark overlay that fully obscures ad content, blending seamlessly with modern terminal themes.
 
 
 ## 🚀 Quick Start
@@ -61,7 +61,7 @@ nohup /Applications/AmpBlocker >/dev/null 2>&1 &
 
 ### Auto-Position Mode (Recommended)
 
-1. **Launch**: Start the app. A dark, frosted bar will appear.
+1. **Launch**: Start the app. A solid dark bar will appear.
 2. **Grant Accessibility Permission**: On first launch, you'll be prompted to grant Accessibility access in **System Settings > Privacy & Security > Accessibility**. This is required for auto-positioning.
 3. **Enable Auto-Position**:
     * Click the **Eye Slash** icon in the macOS Menu Bar (top-right).
@@ -73,7 +73,7 @@ nohup /Applications/AmpBlocker >/dev/null 2>&1 &
 
 ### Manual Mode (Fallback)
 
-1. **Launch**: Start the app. A dark, frosted bar will appear.
+1. **Launch**: Start the app. A solid dark bar will appear.
 2. **Position**:
     * Drag the bar to cover the ad strip at the bottom of your terminal.
     * *Pro Tip:* Hover over the bar to make it transparent so you can align it perfectly with the text lines.
